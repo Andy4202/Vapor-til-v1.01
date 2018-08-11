@@ -45,3 +45,6 @@ extension Acronym: Migration {}
 
 //Content is a wrapper around Codable.
 extension Acronym: Content {}
+
+//Vapor's powerful type safety for parameters extends to models that conform to Parameter.
+extension Acronym: Parameter {}
