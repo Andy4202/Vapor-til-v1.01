@@ -1,5 +1,5 @@
 import Vapor
-import FluentSQLite
+import FluentPostgreSQL
 
 final class Acronym: Codable {
     
@@ -30,7 +30,8 @@ final class Acronym: Codable {
 //}
 
 //The above can be improved with SQLiteModel:
-extension Acronym: SQLiteModel {}
+//extension Acronym: SQLiteModel {}
+extension Acronym: PostgreSQLModel {}
 
 
 /*
