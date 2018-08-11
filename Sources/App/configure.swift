@@ -30,7 +30,7 @@ public func configure(
     //Use Environment.get(_:) to fetch environment variable set by Vapor Cloud.
     //If the function call returns nil (i.e. the application is running locally), default to the values required for the Docker container.
     let hostname = Environment.get("DATABASE_HOSTNAME") ?? "localhost"
-    let username = Environment.get("DATABASE_DB") ?? "vapor"
+    let username = Environment.get("DATABASE_USER") ?? "vapor"
     let databaseName = Environment.get("DATABASE_DB") ?? "vapor"
     let password = Environment.get("DATABASE_PASSWORD") ?? "password"
     
