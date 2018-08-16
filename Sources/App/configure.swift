@@ -51,10 +51,23 @@ public func configure(
     /// Configure migrations
     // Tells the application which database to use for each model.
     var migrations = MigrationConfig()
+
+    //Add the model to the mgrations to Fluent prepares the table in the database at the next application start.
+    migrations.add(model: User.self, database: .psql)
+
     migrations.add(model: Acronym.self, database: .psql)
+
     services.register(migrations)
     
-    
+    //Create a CommandConfig with the default configuration
+    var commandConfig = CommandConfig.default()
+    //Add the Fluent commands to your CommandConfig.
+    //This adds both the revert command with the identifier revert and the migrate command with the identifier migrate.  You use these strings to invoke the commands.
+    commandConfig.useFluentCommands()
+    //Register the commandCondig as a service.
+    services.register(commandConfig)
+        
+        
     
 }
 

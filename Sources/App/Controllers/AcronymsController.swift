@@ -33,16 +33,35 @@ struct AcronymsController: RouteCollection {
             return try req.parameters.next(Acronym.self)
         }
         
+//        func updateHandler(_ req: Request) throws -> Future<Acronym> {
+//            return try flatMap(to: Acronym.self,
+//            req.parameters.next(Acronym.self),
+//            req.content.decode(Acronym.self)) {
+//                acronym, updatedAcronym in
+//                    acronym.short = updatedAcronym.short
+//                    acronym.long = updatedAcronym.long
+//                    return acronym.save(on: req)
+//            }
+//        }
+
+        
+        //This updates the acronym's properties with the new values provided in the request.
         func updateHandler(_ req: Request) throws -> Future<Acronym> {
+            
             return try flatMap(to: Acronym.self,
-            req.parameters.next(Acronym.self),
-            req.content.decode(Acronym.self)) {
-                acronym, updatedAcronym in
-                    acronym.short = updatedAcronym.short
-                    acronym.long = updatedAcronym.long
-                    return acronym.save(on: req)
+                               req.parameters.next(Acronym.self),
+                               req.content.decode(Acronym.self)) {
+                                acronym, updatedAcronym in
+                                
+                                acronym.short = updatedAcronym.short
+                                acronym.long = updatedAcronym.long
+                                acronym.userID = updatedAcronym.userID
+                                return acronym.save(on: req)
             }
         }
+        
+        
+        
         
         func deleteHandler(_ req: Request) throws -> Future<HTTPStatus> {
             return try req
@@ -79,6 +98,19 @@ struct AcronymsController: RouteCollection {
             return Acronym.query(on: req).sort(\.short, .ascending).all()
         }
      
+        //Define a new route handler, getUserHandler(_:), that returns Future<User>.
+        func getUserHandler(_ req: Request) throws -> Future<User> {
+            //Fetch the acronym specified in the request's parameters and unwrap the returned future.
+            return try req.parameters.next(Acronym.self)
+                .flatMap(to: User.self) { acronym in
+                    //Use the new computed property created in the Acronym extension in Acronym.swift to get the acronym's owner.
+                    acronym.user.get(on: req)
+                
+            }
+        }
+        
+        
+        
         
         //Register the route handlers using the route group.
         
@@ -98,6 +130,11 @@ struct AcronymsController: RouteCollection {
         acronymsRoutes.get("first", use: getFirstHandler)
         //Register sortedHandler(_:) to process GET requests to /api/acronyms/sorted
         acronymsRoutes.get("sorted", use: sortedHandler)
+        
+        //This connects an HTTP GET request to:
+        //      /api/acronyms/<ACRONYM ID>/user
+        // to getUserHandler(_:)
+        acronymsRoutes.get(Acronym.parameter, "user", use: getUserHandler)
         
     }
     
