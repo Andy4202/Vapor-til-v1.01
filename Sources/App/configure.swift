@@ -57,6 +57,13 @@ public func configure(
 
     migrations.add(model: Acronym.self, database: .psql)
 
+    //Add a new model to the MigrationConfig, so that Fluent creates the table in the database at the next application start.
+    migrations.add(model: Category.self, database: .psql)
+
+    //Add the pivot model to the MigrationConfig so that Fluent prepares the table in the database at the next application start.
+    migrations.add(model: AcronymCategoryPivot.self, database: .psql)
+        
+        
     services.register(migrations)
     
     //Create a CommandConfig with the default configuration

@@ -109,6 +109,50 @@ struct AcronymsController: RouteCollection {
             }
         }
         
+        //Route handler that returns a Future<HTTPStatus>
+        func addCategoriesHandler(_ req: Request) throws -> Future<HTTPStatus> {
+            //Use flatMap(to:_:_) to extract both the acronym and category from the request's parameters.
+            return try flatMap(to: HTTPStatus.self,
+                                req.parameters.next(Acronym.self),
+                                req.parameters.next(Category.self)) { acronym, category in
+            //Use attach(_:on:) to set up the relationship between acronym and category.
+            //This creates a pivot model and saves it in the database.
+            //Transform the result into a 201 Created response.
+                                    return acronym.categories
+                                        .attach(category, on: req)
+                                        .transform(to: .created)
+                                    
+            }
+        }
+        
+        
+        //Route handler returning Future<[Category]>
+        func getCategoriesHandler(_ req: Request) throws -> Future<[Category]> {
+            //Extract the acornym from the request's parameters and unwrap the returned future.
+            return try req.parameters.next(Acronym.self)
+                .flatMap(to: [Category].self) { acronym in
+                    //Use the computed property to get the categories.
+                    //Then use a Fluent query to return all the categories.
+                    try acronym.categories.query(on: req).all()
+                    
+            }
+        }
+        
+        
+        //Define a new route handler, removeCategoriesHandler(_:), that returns a Future<HTTPStatus>
+        func removeCategoriesHandler(_ req: Request) throws -> Future<HTTPStatus> {
+            
+            //Use flatMap(to:_:_:) to extract both the acronym and category from the request's parameters.
+            return try flatMap(to: HTTPStatus.self, req.parameters.next(Acronym.self), req.parameters.next(Category.self)) { acronym, category in
+                
+                //Use detach(_:on:) to remove the relationship between acronym and category.
+                //This finds the pivot model in the database and deletes it.
+                // Transform the result into a 204 No Content response.
+                return acronym.categories
+                    .detach(category, on: req)
+                    .transform(to: .noContent)
+            }
+        }
         
         
         
@@ -135,6 +179,18 @@ struct AcronymsController: RouteCollection {
         //      /api/acronyms/<ACRONYM ID>/user
         // to getUserHandler(_:)
         acronymsRoutes.get(Acronym.parameter, "user", use: getUserHandler)
+        
+        //This routes an HTTP POST request to /api/acronyms/<ACRONYM ID>/categories/<CATEGORY ID>
+        // to addCategoriesHandler(_:)
+        acronymsRoutes.post(Acronym.parameter, "categories", Category.parameter, use: addCategoriesHandler)
+        
+        //This routes an HTTP GET request to /api/acronyms/<ACRONYM ID>/categories to getCategoriesHandler(:_)
+        acronymsRoutes.get(Acronym.parameter, "categories", use: getCategoriesHandler)
+        
+        
+        //This routes an HTTP DELETE request to /api/acronyms/<ACRONYM_ID>/categories/<CATEGORY_ID>
+        //  to removeCategoriesHandler(_:)
+        acronymsRoutes.delete(Acronym.parameter, "categories", Category.parameter, use: removeCategoriesHandler)
         
     }
     

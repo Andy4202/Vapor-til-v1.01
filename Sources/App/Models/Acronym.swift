@@ -8,6 +8,10 @@ final class Acronym: Codable {
     var long: String
     var userID: User.ID
     
+
+    
+    
+    
     init(short: String, long: String, userID: User.ID) {
         self.short = short
         self.long = long
@@ -46,23 +50,6 @@ extension Acronym: PostgreSQLModel {}
 //extension Acronym: Migration {}
 
 
-//Conform Acronym to Migration
-extension Acronym: Migration {
-    //Implement prepare(on:) as required by Migration.
-    //This overrides the default implementation.
-    static func prepare(on connection: PostgreSQLConnection) -> Future<Void> {
-        //Create the table for Acronym in the database.
-        return Database.create(self, on: connection) { builder in
-            //Use addProperties(to:) to add all the fields to the database.
-            //This means you don't need to add each column manually.
-            try addProperties(to: builder)
-            //Add a reference between the userID property on Acronym and the id property on User.
-            //This sets up the foreign key constraint between the two tables.
-            builder.reference(from: \.userID, to: \User.id)
-            
-        }
-    }
-}
 
 
 
@@ -80,6 +67,41 @@ extension Acronym {
         //Use Fluent's parent(_:) function to retrieve the parent.
         //This takes the key path of the user reference on the acronym.
         return parent(\.userID)
+    }
+    
+    
+    /*
+     Add a computed property to Acronym to get an acronym's categories.
+     This returns Fluent's generic Sibling type.
+     It returns the siblings of an Acronym that are of type Category and held using the
+     AcronymCategoryPivot.
+     */
+    var categories: Siblings<Acronym, Category, AcronymCategoryPivot> {
+        // Use Fluent's siblings() function to retrieve all the categories.
+        // Fluent handles everything else.
+        return siblings()
+        
+    }
+    
+}
+
+
+
+//Conform Acronym to Migration
+extension Acronym: Migration {
+    //Implement prepare(on:) as required by Migration.
+    //This overrides the default implementation.
+    static func prepare(on connection: PostgreSQLConnection) -> Future<Void> {
+        //Create the table for Acronym in the database.
+        return Database.create(self, on: connection) { builder in
+            //Use addProperties(to:) to add all the fields to the database.
+            //This means you don't need to add each column manually.
+            try addProperties(to: builder)
+            //Add a reference between the userID property on Acronym and the id property on User.
+            //This sets up the foreign key constraint between the two tables.
+            builder.reference(from: \.userID, to: \User.id)
+            
+        }
     }
 }
 
