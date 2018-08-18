@@ -13,6 +13,10 @@ struct UsersController: RouteCollection {
         //This uses the POST helper method to decode the request body into a User object.
         usersRoute.post(User.self, use: createHandler)
         
+        usersRoute.get(use: getAllHandler)
+        
+        usersRoute.get(User.parameter, use: getHandler)
+        
         //Register getAcronymsHandler
         //This connects an HTTP GET request to /api/users/<USER ID>/acronyms to getAcronymsHandler(_:)
         usersRoute.get(User.parameter, "acronyms", use: getAcronymsHandler)
@@ -29,7 +33,6 @@ struct UsersController: RouteCollection {
     //These next two functions return a list of all users and a single user.
     //Process GET request to /api/users/
     func getAllHandler(_ req: Request) throws -> Future<[User]> {
-        
         return User.query(on: req).all()
     }
     
@@ -47,8 +50,5 @@ struct UsersController: RouteCollection {
                 try user.acronyms.query(on: req).all()
                 
         }
-        
     }
-    
-    
 }
