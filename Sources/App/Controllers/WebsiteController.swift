@@ -14,6 +14,12 @@ struct WebsiteController: RouteCollection {
         //Register acronynHandler route for /acronyms/<ACRONYM ID> similar to the API.
         router.get("acronyms", Acronym.parameter, use: acronymHandler)
 
+        //Register userHandler for /users/<USER ID>
+        router.get("users", User.parameter, use: userHandler)
+        
+        //Register allUsersHandler for /users/
+        router.get("users", use: allUsersHandler)
+        
     }
     // Implement indexHandler(_:) that returns Future<View>
     func indexHandler(_ req: Request) throws -> Future<View> {
@@ -52,6 +58,44 @@ struct WebsiteController: RouteCollection {
                 }
         }
     }
+    
+    
+    //Define the route handler for the user page that returns Future<View>
+    func userHandler(_ req: Request) throws -> Future<View> {
+        
+        //Get the user from the request's parameter and unwrap the future.
+        return try req.parameters.next(User.self)
+            .flatMap(to: View.self) { user in
+                //Get the user's acronyms using the computer property and unwrap the future.
+                return try user.acronyms
+                    .query(on: req)
+                    .all()
+                    .flatMap(to: View.self) { acronyms in
+                        /*
+                        Create a UserContext, then render the user.leaf template, returning the result.
+                         In this case, you're not setting the acronyms array to nil if it's empty.
+                         This is not required as you're checking the count in template.
+                        */
+                        let context = UserContext(title: user.name, user: user, acronyms: acronyms)
+                        return try req.view().render("user", context)
+                        
+                }
+        }
+    }
+    
+    
+    //Define a route handler for the "All Users" page that returns Future<View>
+    func allUsersHandler(_ req: Request) throws -> Future<View> {
+        
+        //Get the users from the database and unwrap the future.
+        return User.query(on: req)
+            .all()
+            .flatMap(to: View.self) { users in
+                //Create an AllUsersContext and render the allUsers.leaf template, then return the result.
+                let context = AllUsersContext(title: "All Users", users: users)
+                return try req.view().render("allUsers", context)
+        }
+    }
 }
 
 //IndexContent is the data for your view, similar to a view model in the MVVM design pattern.
@@ -70,5 +114,17 @@ struct AcronymContext: Encodable {
     let acronym: Acronym
     //User who created the acronym.
     let user: User
+}
+
+struct UserContext: Encodable {
+    let title: String
+    //User object to which the page refers.
+    let user: User
+    let acronyms: [Acronym]
+}
+
+struct AllUsersContext: Encodable {
+    let title: String
+    let users: [User]
 }
 
