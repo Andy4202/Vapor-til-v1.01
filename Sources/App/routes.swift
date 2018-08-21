@@ -29,5 +29,9 @@ public func routes(_ router: Router) throws {
     //Register the new instance with the router to hook up the routes.
     try router.register(collection: categoriesController)
     
+    //Register the new WebsiteController
+    let websiteController = WebsiteController()
+    try router.register(collection: websiteController)
+    
     
 }
