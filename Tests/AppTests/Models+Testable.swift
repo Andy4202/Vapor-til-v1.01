@@ -1,11 +1,36 @@
 @testable import App
 import FluentPostgreSQL
+import Crypto
 
 extension User {
-    static func create(name: String = "Luke", username: String = "lukes", on connection: PostgreSQLConnection) throws -> User {
-        let user = User(name: name, username: username)
+//    static func create(name: String = "Luke", username: String = "lukes", on connection: PostgreSQLConnection) throws -> User {
+//        let user = User(name: name, username: username)
+//        return try user.save(on: connection).wait()
+//    }
+
+    //Make the username parameter an optional string that defaults to nil.
+    static func create(name: String = "Luke",
+                       username: String? = nil,
+                       on connection: PostgreSQLConnection) throws -> User {
+        
+        var createUsername: String
+        
+        // If a username is supplied, use it.
+        if let suppliedUsername = username {
+            createUsername = suppliedUsername
+        } else {
+            //If a username isn't supplied, create a new, random one using UUID.
+            // This ensures the username is unique as required by the migration.
+            createUsername = UUID().uuidString
+        }
+        //Create a user.
+        let password = try BCrypt.hash("password")
+        let user = User(name: name, username: createUsername, password: password)
         return try user.save(on: connection).wait()
     }
+
+
+
 }
 
 extension Acronym {

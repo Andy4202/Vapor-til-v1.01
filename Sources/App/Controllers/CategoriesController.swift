@@ -8,10 +8,18 @@ struct CategoriesController: RouteCollection {
         //Create a new route group for the path /api/categories
         let categoriesRoute = router.grouped("api", "categories")
         //Register the route handlers to their routes.
-        categoriesRoute.post(Category.self, use: createHandler)
+        //categoriesRoute.post(Category.self, use: createHandler)
         categoriesRoute.get(use: getAllHandler)
         categoriesRoute.get(Category.parameter, use: getHandler)
         categoriesRoute.get(Category.parameter, "acronyms", use: getAcronymsHandler)
+        
+        //The following uses the token middleware to protect category creation, just like creating an
+        //  acronym, ensuring only authenticated users can create categories.
+        let tokenAuthMiddleware = User.tokenAuthMiddleware()
+        let guardAuthMiddleware = User.guardAuthMiddleware()
+        let tokenAuthGroup = categoriesRoute.grouped(tokenAuthMiddleware, guardAuthMiddleware)
+        tokenAuthGroup.post(Category.self, use: createHandler)
+        
     }
     
     //Define createHandler(_:category:) that creates a category.

@@ -1,4 +1,5 @@
 import Vapor
+import Crypto
 
 
 
@@ -11,7 +12,7 @@ struct UsersController: RouteCollection {
         
         //Register createHandler(_:) to handle a POST request to /api/users.
         //This uses the POST helper method to decode the request body into a User object.
-        usersRoute.post(User.self, use: createHandler)
+        //usersRoute.post(User.self, use: createHandler)
         
         usersRoute.get(use: getAllHandler)
         
@@ -20,25 +21,43 @@ struct UsersController: RouteCollection {
         //Register getAcronymsHandler
         //This connects an HTTP GET request to /api/users/<USER ID>/acronyms to getAcronymsHandler(_:)
         usersRoute.get(User.parameter, "acronyms", use: getAcronymsHandler)
+        
+        //Create a protected route group using HTTP basic authentication, as you did for creating an acronym.
+        // This doesn't use GuardAuthenticationMiddleware since requireAuthenticated(_:) throws the correct error if a user isn't authenticated.
+        let basicAuthMiddleware = User.basicAuthMiddleware(using: BCryptDigest())
+        let basicAuthGroup = usersRoute.grouped(basicAuthMiddleware)
+        
+        // Connect /api/users/login to loginHandler(_:) through the protected group.
+        basicAuthGroup.post("login", use: loginHandler)
+        
+        let tokenAuthMiddleware = User.tokenAuthMiddleware()
+        let guardAuthMiddleware = User.guardAuthMiddleware()
+        let tokenAuthGroup = usersRoute.grouped(tokenAuthMiddleware, guardAuthMiddleware)
+        tokenAuthGroup.post(User.self, use: createHandler)
+        
+        
     }
     
     //Define a route handler function.
-    func createHandler(_ req: Request, user: User) throws -> Future<User> {
-        //Save the decoded user from the request.
-        return user.save(on: req)
+    func createHandler(_ req: Request, user: User) throws -> Future<User.Public> {
         
+        //Hash the user's password before saving it in the database.
+        user.password = try BCrypt.hash(user.password)
+        
+        //Save the decoded user from the request.
+        return user.save(on: req).convertToPublic()
     }
     
     
     //These next two functions return a list of all users and a single user.
     //Process GET request to /api/users/
-    func getAllHandler(_ req: Request) throws -> Future<[User]> {
-        return User.query(on: req).all()
+    func getAllHandler(_ req: Request) throws -> Future<[User.Public]> {
+        return User.query(on: req).decode(data: User.Public.self).all()
     }
     
     //Process GET requests to /api/users/<USER ID>
-    func getHandler(_ req: Request) throws -> Future<User> {
-        return try req.parameters.next(User.self)
+    func getHandler(_ req: Request) throws -> Future<User.Public> {
+        return try req.parameters.next(User.self).convertToPublic()
     }
     
     //Route handler that returns Future<[Acronym]>
@@ -51,4 +70,18 @@ struct UsersController: RouteCollection {
                 
         }
     }
+    
+    //Route handler for logging a user in.
+    func loginHandler(_ req: Request) throws -> Future<Token> {
+        // Get the authenticated user form the request.
+        // You'll protect this route with the HTTP basic authentication middleware.
+        // This saves the user's identity in the request's authentication cache, allowing you to retrieve the user object later.
+        // requireAuthenticated(_:) throws an authentication error if there's no authenticated user.
+        let user = try req.requireAuthenticated(User.self)
+        // Create a token for the user.
+        let token = try Token.generate(for: user)
+        // Save and return the token.
+        return token.save(on: req)
+    }
+    
 }

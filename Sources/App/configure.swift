@@ -1,6 +1,7 @@
 import FluentPostgreSQL
 import Vapor
 import Leaf
+import Authentication
 
 /// Called before your application initializes.
 ///
@@ -13,6 +14,8 @@ public func configure(
     // Register providers first
     try services.register(FluentPostgreSQLProvider())
     try services.register(LeafProvider())
+    //This registers the necessary services with your application to ensure authentication works.
+    try services.register(AuthenticationProvider())
     
     // Register routes to the router
     let router = EngineRouter.default()
@@ -61,6 +64,10 @@ public func configure(
     migrations.add(model: Acronym.self, database: .psql)
     migrations.add(model: Category.self, database: .psql)
     migrations.add(model: AcronymCategoryPivot.self, database: .psql)
+    migrations.add(model: Token.self, database: .psql)
+    //This add AdminUser to the list of migrations so the app executes the migration at the next app launch.
+    //You use add(migration: database:) instead of add(model:database:) since this isn't a full model.
+    migrations.add(migration: AdminUser.self, database: .psql)
     services.register(migrations)
     
     // Configure the rest of your application here

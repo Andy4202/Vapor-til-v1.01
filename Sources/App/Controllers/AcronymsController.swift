@@ -1,5 +1,6 @@
 import Vapor
 import Fluent
+import Authentication
 
 struct AcronymsController: RouteCollection {
     
@@ -24,7 +25,18 @@ struct AcronymsController: RouteCollection {
         
         //The acronym parameter is the decoded acronym from the request,
         //  so you don't have to decode the data yourself.
-        func createHandler(_ req: Request, acronym: Acronym) throws -> Future<Acronym> {
+//        func createHandler(_ req: Request, acronym: Acronym) throws -> Future<Acronym> {
+//            return acronym.save(on: req)
+//        }
+
+        
+        // Define a route handler that accepts AcronymCreateData as the request body.
+        func createHandler(_ req: Request, data: AcronymCreateData) throws -> Future<Acronym> {
+            // Get the authenticated user from the request.
+            let user = try req.requireAuthenticated(User.self)
+            //Create a new Acronym using the data from the request and the authenticated user.
+            let acronym = try Acronym(short: data.short, long: data.long, userID: user.requireID())
+            //Save and return the acronym.
             return acronym.save(on: req)
         }
         
@@ -48,14 +60,19 @@ struct AcronymsController: RouteCollection {
         //This updates the acronym's properties with the new values provided in the request.
         func updateHandler(_ req: Request) throws -> Future<Acronym> {
             
+            //Decode the request's data to AcronymCreateData since request no longer contains the user's ID in the post data.
             return try flatMap(to: Acronym.self,
                                req.parameters.next(Acronym.self),
-                               req.content.decode(Acronym.self)) {
+                               req.content.decode(AcronymCreateData.self)) {
                                 acronym, updatedAcronym in
                                 
                                 acronym.short = updatedAcronym.short
                                 acronym.long = updatedAcronym.long
-                                acronym.userID = updatedAcronym.userID
+                                //acronym.userID = updatedAcronym.userID
+                                
+                                // Get the authenticated user from the request and use that to update the acronym.
+                                let user = try req.requireAuthenticated(User.self)
+                                acronym.userID = try user.requireID()
                                 return acronym.save(on: req)
             }
         }
@@ -99,12 +116,12 @@ struct AcronymsController: RouteCollection {
         }
      
         //Define a new route handler, getUserHandler(_:), that returns Future<User>.
-        func getUserHandler(_ req: Request) throws -> Future<User> {
+        func getUserHandler(_ req: Request) throws -> Future<User.Public> {
             //Fetch the acronym specified in the request's parameters and unwrap the returned future.
             return try req.parameters.next(Acronym.self)
-                .flatMap(to: User.self) { acronym in
+                .flatMap(to: User.Public.self) { acronym in
                     //Use the new computed property created in the Acronym extension in Acronym.swift to get the acronym's owner.
-                    acronym.user.get(on: req)
+                    acronym.user.get(on: req).convertToPublic()
                 
             }
         }
@@ -161,13 +178,16 @@ struct AcronymsController: RouteCollection {
         //Register createHandler(_:) to process POST requests to /api/acronyms
         //This helper function takes the type to decode as the first parameter.
         //You can provide any path components before the use: parameter, if required.
-        acronymsRoutes.post(Acronym.self, use: createHandler)
+        //Below removed to remove the unauthenticated route of creating acronyms.
+        //acronymsRoutes.post(Acronym.self, use: createHandler)
+        
+        
         //Register getHandler(_:) to process GET requests to /api/acronyms/<ACRONYM ID>
         acronymsRoutes.get(Acronym.parameter, use: getHandler)
         //Register updateHandler(_:) to process PUT requests to /api/acronyms/<ACRONYM ID>
-        acronymsRoutes.put(Acronym.parameter, use: updateHandler)
+        //acronymsRoutes.put(Acronym.parameter, use: updateHandler)
         //Register deleteHandler(_:) to process DELETE requests to /api/acronyms/<ACRONYM ID>
-        acronymsRoutes.delete(Acronym.parameter, use: deleteHandler)
+        //acronymsRoutes.delete(Acronym.parameter, use: deleteHandler)
         //Register searchHandler(_:) to process GET requests to /api/acronyms/search
         acronymsRoutes.get("search", use: searchHandler)
         //Register getFirstHandler(_:) to process GET requests to /api/acronyms/first
@@ -182,7 +202,7 @@ struct AcronymsController: RouteCollection {
         
         //This routes an HTTP POST request to /api/acronyms/<ACRONYM ID>/categories/<CATEGORY ID>
         // to addCategoriesHandler(_:)
-        acronymsRoutes.post(Acronym.parameter, "categories", Category.parameter, use: addCategoriesHandler)
+        //acronymsRoutes.post(Acronym.parameter, "categories", Category.parameter, use: addCategoriesHandler)
         
         //This routes an HTTP GET request to /api/acronyms/<ACRONYM ID>/categories to getCategoriesHandler(:_)
         acronymsRoutes.get(Acronym.parameter, "categories", use: getCategoriesHandler)
@@ -190,14 +210,53 @@ struct AcronymsController: RouteCollection {
         
         //This routes an HTTP DELETE request to /api/acronyms/<ACRONYM_ID>/categories/<CATEGORY_ID>
         //  to removeCategoriesHandler(_:)
-        acronymsRoutes.delete(Acronym.parameter, "categories", Category.parameter, use: removeCategoriesHandler)
+        //acronymsRoutes.delete(Acronym.parameter, "categories", Category.parameter, use: removeCategoriesHandler)
+        
+        
+//        // Instantiate a basic authentication middleware which uses BCryptDigest to verify passwords.
+//        // Since User conforms to BasicAuthenticatable, this is available as a static function on the model.
+//        let basicAuthMiddleware = User.basicAuthMiddleware(using: BCryptDigest())
+//
+//        // Create an instance of GuardAuthenticationMiddleware which ensures that requests contain valid authorization.
+//        let guardAuthMiddleware = User.guardAuthMiddleware()
+//
+//        // Create a middleware group which uses basicAuthMiddleware and guardAuthMiddleware
+//        let protected = acronymsRoutes.grouped(basicAuthMiddleware, guardAuthMiddleware)
+//
+//        // Connect the "create acronym" path to createHandler(_:acronym:) through this middleware group.
+//        protected.post(Acronym.self, use: createHandler)
+        
+
+        //The above statements are replaced with the following:
+        
+        // Create a TokenAuthenticationMiddleware for User.
+        // This uses BearerAuthenticationMiddleware to extract the bearer token out of the request.
+        // The middleware then converts this token into a logged in user.
+        let tokenAuthMiddleware = User.tokenAuthMiddleware()
+        let guardAuthMiddleware = User.guardAuthMiddleware()
+        
+        //Create a route group using tokenAuthMiddleware and guardAuthMiddleware to protect the route for creating an acronym with token authentication.
+        let tokenAuthGroup = acronymsRoutes.grouped(tokenAuthMiddleware, guardAuthMiddleware)
+        
+        // Connect the "create acronym" path to createHandler(_:data:) through this middleware group using the new AcronymCreateData.
+        tokenAuthGroup.post(AcronymCreateData.self, use: createHandler)
+        
+        //These ensure that only authenticated users can create, edit and delete acronyms and add categories to acronyms. Unauthenticated users can still view details about acronyms.
+        tokenAuthGroup.delete(Acronym.parameter, use: deleteHandler)
+        tokenAuthGroup.put(Acronym.parameter, use: updateHandler)
+        tokenAuthGroup.post(Acronym.parameter, "categories", Category.parameter, use: addCategoriesHandler)
+        
+        tokenAuthGroup.delete(Acronym.parameter, "categories", Category.parameter, use: removeCategoriesHandler)
         
     }
     
     func getAllHandler(_ req: Request) throws -> Future<[Acronym]> {
         return Acronym.query(on: req).all()
     }
+}
 
-    
-    
+//Define the request data that a user now has to send to create an acronym.
+struct AcronymCreateData: Content {
+    let short: String
+    let long: String
 }
