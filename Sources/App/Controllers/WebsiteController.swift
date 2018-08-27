@@ -1,4 +1,5 @@
 import Vapor
+import Authentication
 //import Leaf
 
 // Declare a new WebsiteController type that conforms to RouteCollection.
@@ -7,40 +8,81 @@ struct WebsiteController: RouteCollection {
 
     // Implement boot(router:) as required by RouteCollection
     func boot(router: Router) throws {
-        //Register indexHandler(_:) to process GET requests to the router's root path,
-        //      i.e a request to /.
-        router.get(use: indexHandler)
         
-        //Register acronynHandler route for /acronyms/<ACRONYM ID> similar to the API.
-        router.get("acronyms", Acronym.parameter, use: acronymHandler)
-
-        //Register userHandler for /users/<USER ID>
-        router.get("users", User.parameter, use: userHandler)
+        //This creates a route group that runs AuthenticationSessionsMiddleware before the route handlers.
+        //This middleware reads the cookie from the request and looks up the session ID in the application's session list.
+        //If the session contains a user, AuthenticationSessionMiddleware adds it to the AuthenticationCache, making the user available later in the process.
+        let authSessionRoutes = router.grouped(User.authSessionsMiddleware())
         
-        //Register allUsersHandler for /users/
-        router.get("users", use: allUsersHandler)
         
-        //Register a route at /categories that accepts GET requests and calls allCategoriesHandler(_:).
-        router.get("categories", use: allCategoriesHandler)
-        //Register a route at /categories/<CATEGORY ID> that accepts GET requests and calls categoryHandler(_:)
-        router.get("categories", Category.parameter, use: categoryHandler)
+        //Register all the public routes:
+        authSessionRoutes.get(use: indexHandler)
+        authSessionRoutes.get("acronyms", Acronym.parameter, use: acronymHandler)
+        authSessionRoutes.get("users", User.parameter, use: userHandler)
+        authSessionRoutes.get("users", use: allUsersHandler)
+        authSessionRoutes.get("categories", use: allCategoriesHandler)
+        authSessionRoutes.get("categories", Category.parameter, use: categoryHandler)
+        authSessionRoutes.get("login", use: loginHandler)
+        authSessionRoutes.post(LoginPostData.self, at: "login", use: loginPostHandler)
+        authSessionRoutes.post("logout", use: logoutHandler)
         
-        //Register a route at /acronyms/create that accepts GET requests and calls createAcronymHandler(_:)
-        router.get("acronyms", "create", use: createAcronymHandler)
-        //Register a route at /acronyms/create that accepts POST requests and calls
-        //  createAcronymPostHandler(_:acronym:).  This also decodes the request's body to an Acronym.
-        //router.post(Acronym.self, at: "acronyms", "create", use: createAcronymPostHandler)
-        router.post(CreateAcronymData.self, at: "acronyms", "create", use: createAcronymPostHandler)
+        //This creates a new route group, extending from authSessionRoutes, that includes RedirectMiddleware.
+        //The application runs a request through RedirectMiddleware before it reaches the route handler, but after AuthenticationSessionsMiddleware.
+        //This allows RedirectMiddleware to check for an authenticated user.
+        //RedirectMiddleware requires you to specify the path for redirecting unauthenticated users and the Authenticatable type to check for. In this case, that's your User model.
+        let protectRoutes = authSessionRoutes.grouped(RedirectMiddleware<User>(path: "/login"))
         
-        //Register a route a /acronyms/<ACRONYM_ID>/edit to accept GET requests that calls editAcronymHandler(_:).
-        router.get("acronyms", Acronym.parameter, "edit", use: editAcronymHandler)
         
-        //Register a route to handle POST requests to the same URL that calls editAcronymPostHandler(_:)
-        router.post("acronyms", Acronym.parameter, "edit", use: editAcronymPostHandler)
+        //Routes that require protection:
+        protectRoutes.get("acronyms", "create", use: createAcronymHandler)
+        protectRoutes.post(CreateAcronymData.self, at: "acronyms", "create", use: createAcronymPostHandler)
+        protectRoutes.get("acronyms", Acronym.parameter, "edit", use: editAcronymHandler)
+        protectRoutes.post("acronyms", Acronym.parameter, "edit", use: editAcronymPostHandler)
+        protectRoutes.post("acronyms", Acronym.parameter, "delete", use: deleteAcronymHandler)
         
-        //Register the delete route.
-        //Registers a route at /acronyms/<ACRONYM ID>/delete to accept POST requests and call deleteAcronymHandler(_:).
-        router.post("acronyms", Acronym.parameter, "delete", use: deleteAcronymHandler)
+        
+//        //Register indexHandler(_:) to process GET requests to the router's root path,
+//        //      i.e a request to /.
+//        router.get(use: indexHandler)
+//
+//        //Register acronynHandler route for /acronyms/<ACRONYM ID> similar to the API.
+//        router.get("acronyms", Acronym.parameter, use: acronymHandler)
+//
+//        //Register userHandler for /users/<USER ID>
+//        router.get("users", User.parameter, use: userHandler)
+//
+//        //Register allUsersHandler for /users/
+//        router.get("users", use: allUsersHandler)
+//
+//        //Register a route at /categories that accepts GET requests and calls allCategoriesHandler(_:).
+//        router.get("categories", use: allCategoriesHandler)
+//        //Register a route at /categories/<CATEGORY ID> that accepts GET requests and calls categoryHandler(_:)
+//        router.get("categories", Category.parameter, use: categoryHandler)
+//
+//        //Register a route at /acronyms/create that accepts GET requests and calls createAcronymHandler(_:)
+//        router.get("acronyms", "create", use: createAcronymHandler)
+//        //Register a route at /acronyms/create that accepts POST requests and calls
+//        //  createAcronymPostHandler(_:acronym:).  This also decodes the request's body to an Acronym.
+//        //router.post(Acronym.self, at: "acronyms", "create", use: createAcronymPostHandler)
+//        router.post(CreateAcronymData.self, at: "acronyms", "create", use: createAcronymPostHandler)
+//
+//        //Register a route a /acronyms/<ACRONYM_ID>/edit to accept GET requests that calls editAcronymHandler(_:).
+//        router.get("acronyms", Acronym.parameter, "edit", use: editAcronymHandler)
+//
+//        //Register a route to handle POST requests to the same URL that calls editAcronymPostHandler(_:)
+//        router.post("acronyms", Acronym.parameter, "edit", use: editAcronymPostHandler)
+//
+//        //Register the delete route.
+//        //Registers a route at /acronyms/<ACRONYM ID>/delete to accept POST requests and call deleteAcronymHandler(_:).
+//        router.post("acronyms", Acronym.parameter, "delete", use: deleteAcronymHandler)
+//
+//        //Route GET requests for /login to loginHandler(_:)
+//        router.get("login", use: loginHandler)
+//
+//        //Route POST requests for /login to loginPostHandler(_:userData:),
+//        //      decoding the request body into LoginPostData.
+//        router.post(LoginPostData.self, at: "login", use: loginPostHandler)
+//
         
     }
     // Implement indexHandler(_:) that returns Future<View>
@@ -53,9 +95,19 @@ struct WebsiteController: RouteCollection {
                 // Add the acronyms to IndexContext if there are any,
                 // otherwise set the variable to nil.
                 // This is easier for Leaf to manage than an empty array.
-                let acronymData = acronyms.isEmpty ? nil : acronyms
-                let context = IndexContext(title: "Homepage",
-                                           acronyms: acronymData)
+                let acronymsData = acronyms.isEmpty ? nil : acronyms
+                //let context = IndexContext(title: "Homepage",
+                //                           acronyms: acronymData)
+                
+                //Check if the request contains an authenticated user.
+                let userLoggedIn = try req.isAuthenticated(User.self)
+                //Pass the result to the new flag in IndexContext.
+                //let context = IndexContext(title: "Homepage", acronyms: acronymsData, userLoggedIn: userLoggedIn)
+                
+                let showCookieMessage = req.http.cookies["cookies-accepted"] == nil
+                
+                //
+                let context = IndexContext(title: "Homepage", acronyms: acronymsData, userLoggedIn: userLoggedIn, showCookieMessage: showCookieMessage)
                 
                 return try req.view().render("index", context)
                 
@@ -150,7 +202,21 @@ struct WebsiteController: RouteCollection {
     
     func createAcronymHandler(_ req: Request) throws -> Future<View> {
         // Create a context by passing in a query to get all of the users.
-        let context = CreateAcronymContext(users: User.query(on: req).all())
+        //let context = CreateAcronymContext(users: User.query(on: req).all())
+        //let context = CreateAcronymContext()
+        
+        //Create a token using 16 bytes of randomly generated data, base64 encoded.
+        let token = try CryptoRandom()
+            .generateData(count: 16)
+            .base64URLEncodedString()
+        
+        //Initialize CreateAcronymContext with the created token.
+        let context = CreateAcronymContext(csrfToken: token)
+        
+        //Save the token into the request's session under the CSRF_TOKEN key.
+        try req.session()["CSRF_TOKEN"] = token
+        
+        
         // Render the page using the createAcronym.leaf template.
         return try req.view().render("createAcronym", context)
     }
@@ -177,8 +243,28 @@ struct WebsiteController: RouteCollection {
     //Change the Content type of route handler to accept CreateAcronymData.
     func createAcronymPostHandler(_ req: Request, data: CreateAcronymData) throws -> Future<Response> {
         
+        //Get the expected token from the request's session.
+        // This is the token you saved in createAcronymHandler(_:)
+        let expectedToken = try req.session()["CSRF_TOKEN"]
+        
+        //Clear the CSRF tokmen now that you've used it.
+        //  You generate a new token with each form.
+        try req.session()["CSRF_TOKEN"] = nil
+        
+        //Ensure the provided token matches the expected token.
+        //  otherwise, throw a 400 bad request error.
+        guard expectedToken == data.csrfToken else {
+            throw Abort(.badRequest)
+        }
+        
+        
+        
         //Create an Acronym object to save as it's no longer passed into the route.
-        let acronym = Acronym(short: data.short, long: data.long, userID: data.userID)
+        //let acronym = Acronym(short: data.short, long: data.long, userID: data.userID)
+       
+        //Get the user from the request using requireAuthenticated(User.self)
+        let user = try req.requireAuthenticated(User.self)
+        let acronym = try Acronym(short: data.short, long: data.long, userID: user.requireID())
         
         //Call flatMap(to:) instead of map(to:) as you now return a Future<Response> in the closure.
         return acronym.save(on: req)
@@ -217,9 +303,11 @@ struct WebsiteController: RouteCollection {
                 //Create a context to edit the acronym, passing in all the users.
                 //let context = EditAcronymContext(acronym: acronym, users: User.query(on: req).all())
                 
-                let users = User.query(on: req).all()
+                //let users = User.query(on: req).all()
                 let categories = try acronym.categories.query(on: req).all()
-                let context = EditAcronymContext(acronym: acronym, users: users, categories: categories)
+                //let context = EditAcronymContext(acronym: acronym, users: users, categories: categories)
+                
+                let context = EditAcronymContext(acronym: acronym, categories: categories)
                 
                 //Render the page using the createAcronym.leaf template, the same template used for the create page.
                 return try req.view().render("createAcronym", context)
@@ -263,9 +351,11 @@ struct WebsiteController: RouteCollection {
             req.parameters.next(Acronym.self),
             req.content.decode(CreateAcronymData.self)) {
                acronym, data in
+                //Get the authenticated user from the request.
+               let user = try req.requireAuthenticated(User.self)
                acronym.short = data.short
                acronym.long = data.long
-               acronym.userID = data.userID
+               acronym.userID = try user.requireID()
                 //Use flatMap(to:) on save(on:) since the closure now returns a future.
                return acronym.save(on: req).flatMap(to: Response.self) { savedAcronym in
                      guard let id = savedAcronym.id else {
@@ -316,14 +406,6 @@ struct WebsiteController: RouteCollection {
         }
     
 
-    
-    
-    
-    
-    
-    
-    
-    
     //This route extracts the acronym from the request's parameter and calls delete(on:) on the acronym.  The route then transforms the result to redirect the page to the home screen.
     func deleteAcronymHandler(_ req: Request) throws -> Future<Response> {
         
@@ -331,6 +413,52 @@ struct WebsiteController: RouteCollection {
             .transform(to: req.redirect(to: "/"))
     }
     
+    
+    // Define a route handler for the login page that returns a future View.
+    func loginHandler(_ req: Request) throws -> Future<View> {
+        let context: LoginContext
+        // If the request contains the error parameter, create a context with loginError set to true.
+        if req.query[Bool.self, at: "error"] != nil {
+            context = LoginContext(loginError: true)
+        } else {
+            context = LoginContext()
+        }
+        // Render the login.leaf template, passing in the context.
+        return try req.view().render("login", context)
+    }
+    
+    
+    //Define the route handler that decodes LoginPostData from the request and returns Future<Response>
+    func loginPostHandler(_ req: Request, userData: LoginPostData) throws -> Future<Response> {
+        //Call authenticate(username:password:using:on).
+        //This checks the username and password against the database and verifies the BCrypt hash.
+        //This function returns a nil user in a future if there's an issue authenticating the user.
+        return User.authenticate(username: userData.username, password: userData.password, using: BCryptDigest(), on: req).map(to: Response.self) { user in
+            
+            //Verify authenticate(username:password:using:on:) returned an authenticated user; otherwise, redirect back to the login page to show an error.
+            guard let user = user else {
+                return req.redirect(to: "/login?error")
+            }
+            
+            //Authenticate the request's session.
+            //This saves the authenticated User into the request's session so Vapor can retrieve it in later requests.  This is how Vapor persists authentication when a user logs in.
+            try req.authenticateSession(user)
+            
+            //Redirect to the homepage after the login succeeds.
+            return req.redirect(to: "/")
+            
+        }
+    }
+    
+    //Define a route handler that simply returns Response.
+    // There's no asynchronous work in this function so it doesn't need to return a future.
+    func logoutHandler(_ req: Request) throws -> Response {
+        //Call unauthenticateSession(_:) on the request.
+        // This deletes the user from the session so it can't be used to authenticate future requests.
+        try req.unauthenticateSession(User.self)
+        // Return a redirect to the index page.
+        return req.redirect(to: "/")
+    }
     
 }
 
@@ -340,6 +468,10 @@ struct IndexContext: Encodable {
     let title: String
     //Optional - it can be nil as there may be no acronyms in the database.
     let acronyms: [Acronym]?
+    let userLoggedIn: Bool
+    
+    //This flag indicate to the template whether is should display the cookie consent message.
+    let showCookieMessage: Bool
 }
 
 
@@ -351,6 +483,9 @@ struct AcronymContext: Encodable {
     //User who created the acronym.
     let user: User
     let categories: Future<[Category]>
+    
+
+    
 }
 
 struct UserContext: Encodable {
@@ -388,7 +523,11 @@ struct CategoryContext: Encodable {
 
 struct CreateAcronymContext: Encodable {
     let title = "Create An Acronym"
-    let users: Future<[User]>
+    //let users: Future<[User]>
+    
+    //This is the CRSF token you'll pass into the template.
+    let csrfToken: String
+    
 }
 
 struct EditAcronymContext: Encodable {
@@ -397,7 +536,7 @@ struct EditAcronymContext: Encodable {
     // The acronym to edit.
     let acronym: Acronym
     // A future array of users to display in the form.
-    let users: Future<[User]>
+    //let users: Future<[User]>
     // A flag to tell the template that the page is for editing an acronym.
     let editing = true
     
@@ -405,8 +544,30 @@ struct EditAcronymContext: Encodable {
 }
 
 struct CreateAcronymData: Content {
-    let userID: User.ID
+    //This is no longer required since you can get it from the authenticated user.
+    //let userID: User.ID
     let short: String
     let long: String
     let categories: [String]?
+    //This is the CSRF Token that the form sends using the hidden input.
+    let csrfToken: String
+}
+
+
+//Create a context for the login page.
+//This provides the title of the page and a flag to indicate a login error.
+struct LoginContext: Encodable {
+    let title = "Log In"
+    let loginError: Bool
+    
+    init(loginError: Bool = false) {
+        self.loginError = loginError
+    }
+}
+
+
+//A Content type that defines the data you expect when you receive the login POST request.
+struct LoginPostData: Content {
+    let username: String
+    let password: String
 }

@@ -4,6 +4,10 @@
 
 <form method="post">
 
+    #if(csrfToken) {
+        <input type="hidden" name="csrfToken" value="#(csrfToken)">
+    }
+
     <div class="form-group">
         <label for="short">Acronym</label>
         <input type="text" name="short" class="form-control" id="short" #if(editing){value="#(acronym.short)"}/>
@@ -14,19 +18,6 @@
         <input type="text" name="long" class="form-control" id="long" #if(editing){value="#(acronym.long)"}/>
     </div>
 
-    <div class="form-group">
-        <label for="userID">User</label>
-        <select name="userID" class="form-control" id="userID">
-        
-        #for(user in users) {
-        <option value="#(user.id)"
-            #if(editin){#if(acronym.userID == user.id){selected}}>
-        #(user.name)
-        </option>
-
-        }
-    </select>
-    </div>
 
     <div class="form-group">
         <label for="categories">Categories</label>

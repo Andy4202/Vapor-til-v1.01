@@ -26,6 +26,7 @@ public func configure(
     var middlewares = MiddlewareConfig() // Create _empty_ middleware config
     middlewares.use(FileMiddleware.self) // Serves files from `Public/` directory
     middlewares.use(ErrorMiddleware.self) // Catches errors and converts to HTTP response
+    middlewares.use(SessionsMiddleware.self) //Global middleware for your application.
     services.register(middlewares)
     
     // Configure a database
@@ -77,5 +78,10 @@ public func configure(
     
     //This tells Vapor to use LeafRenderer when asked for a ViewRenderer type.
     config.prefer(LeafRenderer.self, for: ViewRenderer.self)
+    
+    //Tell your application to use MemoryKeyedCache when asked for the KeyedCache service.
+    //The KeyedCache service is a key-value cache that backs sessions.
+    //There are multiple implementations of KeyedCache - discussed in Chapter 24.
+    config.prefer(MemoryKeyedCache.self, for: KeyedCache.self)
     
 }
