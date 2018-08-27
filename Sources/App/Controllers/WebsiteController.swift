@@ -5,7 +5,7 @@ import Authentication
 // Declare a new WebsiteController type that conforms to RouteCollection.
 // RouteCollection: Groups collections of routes together for adding to a router.
 struct WebsiteController: RouteCollection {
-
+    
     // Implement boot(router:) as required by RouteCollection
     func boot(router: Router) throws {
         
@@ -26,6 +26,14 @@ struct WebsiteController: RouteCollection {
         authSessionRoutes.post(LoginPostData.self, at: "login", use: loginPostHandler)
         authSessionRoutes.post("logout", use: logoutHandler)
         
+        //Connect a GET request for /register to registerHandler
+        authSessionRoutes.get("register", use: registerHandler)
+        
+        //Connect a POST request for /register to registerPostHandler(_:data:).
+        //Decode the request's body to RegisterData.
+        authSessionRoutes.post(RegisterData.self, at: "register", use: registerPostHandler)
+        
+        
         //This creates a new route group, extending from authSessionRoutes, that includes RedirectMiddleware.
         //The application runs a request through RedirectMiddleware before it reaches the route handler, but after AuthenticationSessionsMiddleware.
         //This allows RedirectMiddleware to check for an authenticated user.
@@ -41,48 +49,48 @@ struct WebsiteController: RouteCollection {
         protectRoutes.post("acronyms", Acronym.parameter, "delete", use: deleteAcronymHandler)
         
         
-//        //Register indexHandler(_:) to process GET requests to the router's root path,
-//        //      i.e a request to /.
-//        router.get(use: indexHandler)
-//
-//        //Register acronynHandler route for /acronyms/<ACRONYM ID> similar to the API.
-//        router.get("acronyms", Acronym.parameter, use: acronymHandler)
-//
-//        //Register userHandler for /users/<USER ID>
-//        router.get("users", User.parameter, use: userHandler)
-//
-//        //Register allUsersHandler for /users/
-//        router.get("users", use: allUsersHandler)
-//
-//        //Register a route at /categories that accepts GET requests and calls allCategoriesHandler(_:).
-//        router.get("categories", use: allCategoriesHandler)
-//        //Register a route at /categories/<CATEGORY ID> that accepts GET requests and calls categoryHandler(_:)
-//        router.get("categories", Category.parameter, use: categoryHandler)
-//
-//        //Register a route at /acronyms/create that accepts GET requests and calls createAcronymHandler(_:)
-//        router.get("acronyms", "create", use: createAcronymHandler)
-//        //Register a route at /acronyms/create that accepts POST requests and calls
-//        //  createAcronymPostHandler(_:acronym:).  This also decodes the request's body to an Acronym.
-//        //router.post(Acronym.self, at: "acronyms", "create", use: createAcronymPostHandler)
-//        router.post(CreateAcronymData.self, at: "acronyms", "create", use: createAcronymPostHandler)
-//
-//        //Register a route a /acronyms/<ACRONYM_ID>/edit to accept GET requests that calls editAcronymHandler(_:).
-//        router.get("acronyms", Acronym.parameter, "edit", use: editAcronymHandler)
-//
-//        //Register a route to handle POST requests to the same URL that calls editAcronymPostHandler(_:)
-//        router.post("acronyms", Acronym.parameter, "edit", use: editAcronymPostHandler)
-//
-//        //Register the delete route.
-//        //Registers a route at /acronyms/<ACRONYM ID>/delete to accept POST requests and call deleteAcronymHandler(_:).
-//        router.post("acronyms", Acronym.parameter, "delete", use: deleteAcronymHandler)
-//
-//        //Route GET requests for /login to loginHandler(_:)
-//        router.get("login", use: loginHandler)
-//
-//        //Route POST requests for /login to loginPostHandler(_:userData:),
-//        //      decoding the request body into LoginPostData.
-//        router.post(LoginPostData.self, at: "login", use: loginPostHandler)
-//
+        //        //Register indexHandler(_:) to process GET requests to the router's root path,
+        //        //      i.e a request to /.
+        //        router.get(use: indexHandler)
+        //
+        //        //Register acronynHandler route for /acronyms/<ACRONYM ID> similar to the API.
+        //        router.get("acronyms", Acronym.parameter, use: acronymHandler)
+        //
+        //        //Register userHandler for /users/<USER ID>
+        //        router.get("users", User.parameter, use: userHandler)
+        //
+        //        //Register allUsersHandler for /users/
+        //        router.get("users", use: allUsersHandler)
+        //
+        //        //Register a route at /categories that accepts GET requests and calls allCategoriesHandler(_:).
+        //        router.get("categories", use: allCategoriesHandler)
+        //        //Register a route at /categories/<CATEGORY ID> that accepts GET requests and calls categoryHandler(_:)
+        //        router.get("categories", Category.parameter, use: categoryHandler)
+        //
+        //        //Register a route at /acronyms/create that accepts GET requests and calls createAcronymHandler(_:)
+        //        router.get("acronyms", "create", use: createAcronymHandler)
+        //        //Register a route at /acronyms/create that accepts POST requests and calls
+        //        //  createAcronymPostHandler(_:acronym:).  This also decodes the request's body to an Acronym.
+        //        //router.post(Acronym.self, at: "acronyms", "create", use: createAcronymPostHandler)
+        //        router.post(CreateAcronymData.self, at: "acronyms", "create", use: createAcronymPostHandler)
+        //
+        //        //Register a route a /acronyms/<ACRONYM_ID>/edit to accept GET requests that calls editAcronymHandler(_:).
+        //        router.get("acronyms", Acronym.parameter, "edit", use: editAcronymHandler)
+        //
+        //        //Register a route to handle POST requests to the same URL that calls editAcronymPostHandler(_:)
+        //        router.post("acronyms", Acronym.parameter, "edit", use: editAcronymPostHandler)
+        //
+        //        //Register the delete route.
+        //        //Registers a route at /acronyms/<ACRONYM ID>/delete to accept POST requests and call deleteAcronymHandler(_:).
+        //        router.post("acronyms", Acronym.parameter, "delete", use: deleteAcronymHandler)
+        //
+        //        //Route GET requests for /login to loginHandler(_:)
+        //        router.get("login", use: loginHandler)
+        //
+        //        //Route POST requests for /login to loginPostHandler(_:userData:),
+        //        //      decoding the request body into LoginPostData.
+        //        router.post(LoginPostData.self, at: "login", use: loginPostHandler)
+        //
         
     }
     // Implement indexHandler(_:) that returns Future<View>
@@ -151,10 +159,10 @@ struct WebsiteController: RouteCollection {
                     .all()
                     .flatMap(to: View.self) { acronyms in
                         /*
-                        Create a UserContext, then render the user.leaf template, returning the result.
+                         Create a UserContext, then render the user.leaf template, returning the result.
                          In this case, you're not setting the acronyms array to nil if it's empty.
                          This is not required as you're checking the count in template.
-                        */
+                         */
                         let context = UserContext(title: user.name, user: user, acronyms: acronyms)
                         return try req.view().render("user", context)
                         
@@ -206,9 +214,7 @@ struct WebsiteController: RouteCollection {
         //let context = CreateAcronymContext()
         
         //Create a token using 16 bytes of randomly generated data, base64 encoded.
-        let token = try CryptoRandom()
-            .generateData(count: 16)
-            .base64URLEncodedString()
+        let token = try CryptoRandom().generateData(count: 16).base64EncodedString()
         
         //Initialize CreateAcronymContext with the created token.
         let context = CreateAcronymContext(csrfToken: token)
@@ -216,30 +222,31 @@ struct WebsiteController: RouteCollection {
         //Save the token into the request's session under the CSRF_TOKEN key.
         try req.session()["CSRF_TOKEN"] = token
         
+        print("This is the token in createAcronymHandler: \(token)")
         
         // Render the page using the createAcronym.leaf template.
         return try req.view().render("createAcronym", context)
     }
     
- 
+    
     //Declare a route handler that takes Acronym as a parameter.
     //Vapor automatically decodes the form data to an Acronym object.
-//    func createAcronymPostHandler(_ req: Request, acronym: Acronym) throws -> Future<Response> {
-//
-//        //Save the provided acronym and unwrap the returned future.
-//        return acronym.save(on: req).map(to: Response.self) {
-//            acronym in
-//            //Ensure that the ID has been set, otherwise throw a 500 Internal Server Error.
-//            guard let id = acronym.id else {
-//                throw Abort(.internalServerError)
-//            }
-//
-//            //Redirect to the page for the newly created acronym.
-//            return req.redirect(to: "/acronyms/\(id)")
-//
-//        }
-//    }
-
+    //    func createAcronymPostHandler(_ req: Request, acronym: Acronym) throws -> Future<Response> {
+    //
+    //        //Save the provided acronym and unwrap the returned future.
+    //        return acronym.save(on: req).map(to: Response.self) {
+    //            acronym in
+    //            //Ensure that the ID has been set, otherwise throw a 500 Internal Server Error.
+    //            guard let id = acronym.id else {
+    //                throw Abort(.internalServerError)
+    //            }
+    //
+    //            //Redirect to the page for the newly created acronym.
+    //            return req.redirect(to: "/acronyms/\(id)")
+    //
+    //        }
+    //    }
+    
     //Change the Content type of route handler to accept CreateAcronymData.
     func createAcronymPostHandler(_ req: Request, data: CreateAcronymData) throws -> Future<Response> {
         
@@ -247,9 +254,11 @@ struct WebsiteController: RouteCollection {
         // This is the token you saved in createAcronymHandler(_:)
         let expectedToken = try req.session()["CSRF_TOKEN"]
         
-        //Clear the CSRF tokmen now that you've used it.
+        //Clear the CSRF token now that you've used it.
         //  You generate a new token with each form.
         try req.session()["CSRF_TOKEN"] = nil
+        
+        print("data.csrfToken: \(data.csrfToken)")
         
         //Ensure the provided token matches the expected token.
         //  otherwise, throw a 400 bad request error.
@@ -257,11 +266,11 @@ struct WebsiteController: RouteCollection {
             throw Abort(.badRequest)
         }
         
-        
+        print("Expected token: \(expectedToken)")
         
         //Create an Acronym object to save as it's no longer passed into the route.
         //let acronym = Acronym(short: data.short, long: data.long, userID: data.userID)
-       
+        
         //Get the user from the request using requireAuthenticated(User.self)
         let user = try req.requireAuthenticated(User.self)
         let acronym = try Acronym(short: data.short, long: data.long, userID: user.requireID())
@@ -297,6 +306,8 @@ struct WebsiteController: RouteCollection {
     
     //Route handler to show the edit acronym form:
     func editAcronymHandler(_ req: Request) throws -> Future<View> {
+        
+        
         //Get the acronym to edit from the request's parameter and unwrap the future.
         return try req.parameters.next(Acronym.self)
             .flatMap(to: View.self) { acronym in
@@ -315,31 +326,31 @@ struct WebsiteController: RouteCollection {
         }
     }
     
-//    func editAcronymPostHandler(_ req: Request) throws -> Future<Response> {
-//
-//        // Use the convenience form of flatMap to get the acronym from the request's parameter,
-//        //  decode the incoming data and unwrap both results.
-//        return try flatMap(to: Response.self,
-//                            req.parameters.next(Acronym.self),
-//                            req.content.decode(Acronym.self)) {
-//                                acronym, data in
-//                                // Update the acronym with the new data.
-//                                acronym.short = data.short
-//                                acronym.long = data.long
-//                                acronym.userID = data.userID
-//                                // Save the result and unwrap the returned future.
-//                                return acronym.save(on: req)
-//                                    .map(to: Response.self) {
-//                                        savedAcronym in
-//                                        //Ensure the ID has been set, otherwise throw a 500 Internal Server error.
-//                                        guard let id = savedAcronym.id else {
-//                                            throw Abort(.internalServerError)
-//                                        }
-//                                        //Return a redirect to the updated acronym's page.
-//                                        return req.redirect(to: "/acronyms/\(id)")
-//                                }
-//        }
-//    }
+    //    func editAcronymPostHandler(_ req: Request) throws -> Future<Response> {
+    //
+    //        // Use the convenience form of flatMap to get the acronym from the request's parameter,
+    //        //  decode the incoming data and unwrap both results.
+    //        return try flatMap(to: Response.self,
+    //                            req.parameters.next(Acronym.self),
+    //                            req.content.decode(Acronym.self)) {
+    //                                acronym, data in
+    //                                // Update the acronym with the new data.
+    //                                acronym.short = data.short
+    //                                acronym.long = data.long
+    //                                acronym.userID = data.userID
+    //                                // Save the result and unwrap the returned future.
+    //                                return acronym.save(on: req)
+    //                                    .map(to: Response.self) {
+    //                                        savedAcronym in
+    //                                        //Ensure the ID has been set, otherwise throw a 500 Internal Server error.
+    //                                        guard let id = savedAcronym.id else {
+    //                                            throw Abort(.internalServerError)
+    //                                        }
+    //                                        //Return a redirect to the updated acronym's page.
+    //                                        return req.redirect(to: "/acronyms/\(id)")
+    //                                }
+    //        }
+    //    }
     
     
     
@@ -350,62 +361,62 @@ struct WebsiteController: RouteCollection {
             to: Response.self,
             req.parameters.next(Acronym.self),
             req.content.decode(CreateAcronymData.self)) {
-               acronym, data in
+                acronym, data in
                 //Get the authenticated user from the request.
-               let user = try req.requireAuthenticated(User.self)
-               acronym.short = data.short
-               acronym.long = data.long
-               acronym.userID = try user.requireID()
+                let user = try req.requireAuthenticated(User.self)
+                acronym.short = data.short
+                acronym.long = data.long
+                acronym.userID = try user.requireID()
                 //Use flatMap(to:) on save(on:) since the closure now returns a future.
-               return acronym.save(on: req).flatMap(to: Response.self) { savedAcronym in
-                     guard let id = savedAcronym.id else {
-                            throw Abort(.internalServerError)
-                      }
-                   //Get all categories from the database.
-                   return try acronym.categories.query(on: req).all()
-                     .flatMap(to: Response.self) { existingCategories in
-                      //Create an array of category names from the categories in the database.
-                      let existingStringArray =
-                        existingCategories.map { $0.name }
-                      
-                      //Create a Set for the categories in the database and another for the categories supplied with the request.
-                      let existingSet = Set<String>(existingStringArray)
-                      let newSet = Set<String>(data.categories ?? [] )
-                      
-                      //Calculate the categories to add to the acronym and the categories to remove.
-                      let categoriesToAdd = newSet.subtracting(existingSet)
-                      let categoriesToRemove = existingSet.subtracting(newSet)
-                      
-                     //Create an array of category operation results.
-                      var categoryResults: [Future<Void>] = []
-                     
-                     //Loop through all the categories to add and call Category.addCategory(_:to:on:) to set up the relationship.  Add each result to the results array.
-                      for newCategory in categoriesToAdd {
-                           categoryResults.append(
-                            try Category.addCategory(newCategory, to: acronym, on: req))
-                      }
-                       //Loop through all the categories to remove from the acronym.
-                      for categoryNameToRemove in categoriesToRemove {
-                         //Get the Category object from the name of the category to remove.
-                         let categoryToRemove = existingCategories.first {
-                                $0.name == categoryNameToRemove
-                         }
-                        //If the Category object exists, use detach(_:on:) to remove the relationship and delete the pivot.
-                         if let category = categoryToRemove {
-                            categoryResults.append(
-                                acronym.categories.detach(category, on: req))
-                         }
-                        }
-                        //Flatten all the future category results.  Transform the result to redirect to the updated acronym's page.
-                        return categoryResults
-                            .flatten(on: req)
-                            .transform(to: req.redirect(to: "/acronyms/\(id)"))
-                        }
+                return acronym.save(on: req).flatMap(to: Response.self) { savedAcronym in
+                    guard let id = savedAcronym.id else {
+                        throw Abort(.internalServerError)
+                    }
+                    //Get all categories from the database.
+                    return try acronym.categories.query(on: req).all()
+                        .flatMap(to: Response.self) { existingCategories in
+                            //Create an array of category names from the categories in the database.
+                            let existingStringArray =
+                                existingCategories.map { $0.name }
+                            
+                            //Create a Set for the categories in the database and another for the categories supplied with the request.
+                            let existingSet = Set<String>(existingStringArray)
+                            let newSet = Set<String>(data.categories ?? [] )
+                            
+                            //Calculate the categories to add to the acronym and the categories to remove.
+                            let categoriesToAdd = newSet.subtracting(existingSet)
+                            let categoriesToRemove = existingSet.subtracting(newSet)
+                            
+                            //Create an array of category operation results.
+                            var categoryResults: [Future<Void>] = []
+                            
+                            //Loop through all the categories to add and call Category.addCategory(_:to:on:) to set up the relationship.  Add each result to the results array.
+                            for newCategory in categoriesToAdd {
+                                categoryResults.append(
+                                    try Category.addCategory(newCategory, to: acronym, on: req))
+                            }
+                            //Loop through all the categories to remove from the acronym.
+                            for categoryNameToRemove in categoriesToRemove {
+                                //Get the Category object from the name of the category to remove.
+                                let categoryToRemove = existingCategories.first {
+                                    $0.name == categoryNameToRemove
+                                }
+                                //If the Category object exists, use detach(_:on:) to remove the relationship and delete the pivot.
+                                if let category = categoryToRemove {
+                                    categoryResults.append(
+                                        acronym.categories.detach(category, on: req))
+                                }
+                            }
+                            //Flatten all the future category results.  Transform the result to redirect to the updated acronym's page.
+                            return categoryResults
+                                .flatten(on: req)
+                                .transform(to: req.redirect(to: "/acronyms/\(id)"))
                     }
                 }
         }
+    }
     
-
+    
     //This route extracts the acronym from the request's parameter and calls delete(on:) on the acronym.  The route then transforms the result to redirect the page to the home screen.
     func deleteAcronymHandler(_ req: Request) throws -> Future<Response> {
         
@@ -460,6 +471,73 @@ struct WebsiteController: RouteCollection {
         return req.redirect(to: "/")
     }
     
+    //Route handler for the registration page.
+    func registerHandler(_ req: Request) throws -> Future<View> {
+        //let context = RegisterContext()
+        
+        //This check the request's query.
+        //If message exist's - i.e. the URL is /register?message=some-string
+        // the route handler includes it in the context Leaf uses to render the page.
+        let context: RegisterContext
+        if let message = req.query[String.self, at: "message"] {
+            context = RegisterContext(message: message)
+        } else {
+            context = RegisterContext()
+        }
+        
+        return try req.view().render("register", context)
+    }
+    
+    // Define a route handler that accepts a request and the decoded RegisterData.
+    func registerPostHandler(_ req: Request, data: RegisterData) throws -> Future<Response> {
+        
+        //The following calls validate() on the decoded RegisterData.
+        // checking each validator you added previously.
+        // validate() can throw ValidationError.
+        // In an API, you can let this error propogate back to the user but, on a website,
+        //  that doesn't make for a good user experience.  In this case, you redirect the user back to the
+        //      register page.
+        do {
+            try data.validate()
+        } catch (let error) {
+            
+            /*
+            When validation fails, the route handler extracts the message from the ValidationError,
+             escapes it properly for inclusion in a URL, and adds it to the redirect URL.
+             Then, it redirects the user back to the registration page.
+            */
+            
+            let redirect: String
+        
+            if let error = error as? ValidationError,
+                let message = error.reason.addingPercentEncoding(
+                    withAllowedCharacters: .urlQueryAllowed) {
+                redirect = "/register?message=\(message)"
+            } else {
+                redirect = "/register?message=Unknown+error"
+            }
+            return req.future(req.redirect(to: redirect))
+        }
+        
+        
+        
+        
+        //Hash the password submitted to the form.
+        let password = try BCrypt.hash(data.password)
+        
+        //Create a new User, using the data from the form and the hashed password.
+        let user = User(name: data.name, username: data.username, password: password)
+        
+        //Save the new user and unwrap the returned future.
+        return user.save(on: req).map(to: Response.self) { user in
+            //Authenticate the session for the new user.
+            // This automatically logs users in when they register, thereby providing a nice user experience when signing up with the site.
+            try req.authenticateSession(user)
+            //Return a redirect back to the home page.
+            return req.redirect(to: "/")
+            
+        }
+    }
 }
 
 //IndexContent is the data for your view, similar to a view model in the MVVM design pattern.
@@ -484,7 +562,7 @@ struct AcronymContext: Encodable {
     let user: User
     let categories: Future<[Category]>
     
-
+    
     
 }
 
@@ -541,6 +619,7 @@ struct EditAcronymContext: Encodable {
     let editing = true
     
     let categories: Future<[Category]>
+    
 }
 
 struct CreateAcronymData: Content {
@@ -570,4 +649,68 @@ struct LoginContext: Encodable {
 struct LoginPostData: Content {
     let username: String
     let password: String
+}
+
+
+//Context for the registration page.
+struct RegisterContext: Encodable {
+    let title = "Register"
+    
+    //This is the message to display on the registration page.
+    // Remember that Leaf handles nil gracefully, allowing you to use the default value in the normal case.
+    let message: String?
+    init(message: String? = nil) {
+        self.message = message
+    }
+}
+
+//This Content type matches the expected data received from the registration POST request.
+//This variables match the names of the inputs in register.leaf.
+struct RegisterData: Content {
+    let name: String
+    let username: String
+    let password: String
+    let confirmPassword: String
+}
+
+
+//Extend RegisterData to make it conform to Validatable and Reflectable.
+//Validatable allows you to validate types with Vapor.
+//Reflectable provides a way to discover the internal components of a type.
+extension RegisterData: Validatable, Reflectable {
+    // Implement validations() as required by Validatable.
+    static func validations() throws -> Validations<RegisterData> {
+        
+        // Create a Validations type to contain the various validators.
+        var validations = Validations(RegisterData.self)
+        // Add a validator to ensure RegisterData's name contains only ASCII characters.
+        // Note: Be careful when adding restrictions on names like this.
+        //  Some countries, such as China, don't have names with ASCII characters.
+        try validations.add(\.name, .ascii)
+        // Add a validator to ensure the username contains only alphanumeric characters and is at least 3 characters long.    .count(_:) takes a Swift Range, allowing you to create both open-ended and closed ranges, if required.
+        try validations.add(\.username,
+                            .alphanumeric && .count(3...))
+        // Add a validator to ensure the password is at least 8 characters long.
+        try validations.add(\.password, .count(8...))
+        
+        
+        //Use Validation's add(_:_) to add a custom validation for RegisterData.
+        //  This takes a readable description as the first parameter.
+        //  The second parameter is a closure that should throw if validation fails.
+        validations.add("passwords match") { model in
+            // Verify that password and confirmPassword match.
+            guard model.password == model.confirmPassword else {
+                // If they don't, throw BasicValidationError.
+                throw BasicValidationError("passwords don't match")
+            }
+        }
+        
+        
+        
+        
+        
+        
+        // Return the validations for Vapor to test.
+        return validations
+    }
 }
