@@ -526,7 +526,16 @@ struct WebsiteController: RouteCollection {
         let password = try BCrypt.hash(data.password)
         
         //Create a new User, using the data from the form and the hashed password.
-        let user = User(name: data.name, username: data.username, password: password)
+        //let user = User(name: data.name, username: data.username, password: password)
+        
+        var twitterURL: String?
+        
+        //If the user doesn't provide a Twitter handle, you want to store nil rather than an empty string in the database.
+        if let twitter = data.twitterURL, !twitter.isEmpty {
+            twitterURL = twitter
+        }
+        
+        let user = User(name: data.name, username: data.username, password: password, twitterURL: twitterURL)
         
         //Save the new user and unwrap the returned future.
         return user.save(on: req).map(to: Response.self) { user in
@@ -671,6 +680,8 @@ struct RegisterData: Content {
     let username: String
     let password: String
     let confirmPassword: String
+    //The following allows your form handler to access the Twitter information sent from the browser.
+    let twitterURL: String?
 }
 
 

@@ -68,7 +68,21 @@ public func configure(
     migrations.add(model: Token.self, database: .psql)
     //This add AdminUser to the list of migrations so the app executes the migration at the next app launch.
     //You use add(migration: database:) instead of add(model:database:) since this isn't a full model.
-    migrations.add(migration: AdminUser.self, database: .psql)
+    //migrations.add(migration: AdminUser.self, database: .psql)
+    
+    
+    //With the following, the AdminUser is only added to the migrations if the application is in either the development (the default) or testing environment.
+    //If the environment is production, the migration won't happen.
+    ///Of course, you still want to have an admin in your production environment that has a random password.  In that case you can switch on the environment inside AdminUser or you can create two versions, one for development and one for production.
+    switch env {
+        case .development, .testing:
+            migrations.add(migration: AdminUser.self, database: .psql)
+        default: break
+    }
+    
+    
+    migrations.add(migration: AddTwitterURLToUser.self, database: .psql)
+    migrations.add(migration: MakeCategoriesUnique.self, database: .psql)
     services.register(migrations)
     
     // Configure the rest of your application here

@@ -9,22 +9,26 @@ final class User: Codable {
     var name: String
     var username: String
     var password: String
+    var twitterURL: String?
     
-    init(name: String, username: String, password: String) {
+    init(name: String, username: String, password: String, twitterURL: String? = nil) {
         self.name = name
         self.username = username
         self.password = password
+        self.twitterURL = twitterURL
     }
     
     final class Public: Codable {
         var id: UUID?
         var name: String
         var username: String
+        var twitterURL: String?
         
-        init(id: UUID?, name: String, username: String) {
+        init(id: UUID?, name: String, username: String, twitterURL: String? = nil) {
             self.id = id
             self.name = name
             self.username = username
+            self.twitterURL = twitterURL
             
         }
     }
@@ -39,7 +43,13 @@ extension User: Migration {
         // Create the User table.
         return Database.create(self, on: connection) { builder in
             //Add all the columns to the User table using User's properties.
-            try addProperties(to: builder)
+            //try addProperties(to: builder)
+            
+            builder.field(for: \.id, isIdentifier: true)
+            builder.field(for: \.name)
+            builder.field(for: \.username)
+            builder.field(for: \.password)
+            
             //Add a unique index to username on User.
             builder.unique(on: \.username)
         }
@@ -69,7 +79,7 @@ extension User {
     // Define a method on User that returns User.Public
     func convertToPublic() -> User.Public {
         // Create a public version of the current object.
-        return User.Public(id: id, name: name, username: username)
+        return User.Public(id: id, name: name, username: username, twitterURL: twitterURL)
     }
 }
 
