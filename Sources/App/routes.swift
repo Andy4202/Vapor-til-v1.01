@@ -34,7 +34,7 @@ public func routes(_ router: Router) throws {
     try router.register(collection: websiteController)
     
     //Add the controller for ImperialController()
-    let imperialController = ImperialController()
-    try router.register(collection: imperialController)
+//    let imperialController = ImperialController()
+//    try router.register(collection: imperialController)
     
 }
