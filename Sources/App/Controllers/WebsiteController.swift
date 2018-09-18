@@ -266,7 +266,7 @@ struct WebsiteController: RouteCollection {
             throw Abort(.badRequest)
         }
         
-        print("Expected token: \(expectedToken)")
+        //print("Expected token: \(expectedToken)")
         
         //Create an Acronym object to save as it's no longer passed into the route.
         //let acronym = Acronym(short: data.short, long: data.long, userID: data.userID)
