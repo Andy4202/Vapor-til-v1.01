@@ -258,7 +258,7 @@ struct WebsiteController: RouteCollection {
         //  You generate a new token with each form.
         try req.session()["CSRF_TOKEN"] = nil
         
-        print("data.csrfToken: \(data.csrfToken)")
+        //print("data.csrfToken: \(data.csrfToken)")
         
         //Ensure the provided token matches the expected token.
         //  otherwise, throw a 400 bad request error.
